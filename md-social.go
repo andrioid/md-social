@@ -27,6 +27,8 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -54,12 +56,38 @@ func run() error {
 	publishers = []Publisher{NewBluesky(ctx)}
 	fmt.Println("Connected")
 
-	file := os.Args[1]
-	if _, err := os.Stat(file); errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("file not found: %s", file)
+	dir := os.Args[1]
+	if stat, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) || !stat.IsDir() {
+		return fmt.Errorf("directory not found: %s", dir)
 	}
 
-	return handleFile(ctx, file)
+	err := filepath.Walk(dir, func(path string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		p, found := strings.CutPrefix(path, dir)
+		if !found {
+			p = path
+		}
+		if fi.IsDir() {
+			return nil
+		}
+		// TODO: Skip if extension isn't MD
+
+		fmt.Println("path", p)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+	// if _, err := os.Stat(file); errors.Is(err, fs.ErrNotExist) {
+	// 	return fmt.Errorf("file not found: %s", file)
+	// }
+
+	// return handleFile(ctx, file)
 }
 
 // Handles a single file

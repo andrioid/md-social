@@ -2,6 +2,13 @@
 
 Parses Markdown articles and posts them automatically on social-media. It also stores reference to the post so we don't create duplicates.
 
+The idea is to run this via build-pipelines like so:
+
+1. Site is built and deployed
+2. This program runs and posts what needs posting
+3. If there were changes in Git, it should commit them and rebuild the site
+4. Now possible to use `social.bluesky` (or whatever) to setup likes/comments
+
 ## Requirements
 
 ### Frontmatter
@@ -17,6 +24,8 @@ md-social blogdir/
 ## Configuration
 
 All configuration is via ENV variables. Providers without configuration are skipped
+
+- [ ] MD_BASE_URL
 
 ### Bluesky
 
@@ -35,3 +44,9 @@ As a CLI user, I can...
 - [x] Determine if we should create a post from `date` frontmatter field
 - [ ] Handle directory and strip the prefix
 - [ ] Build and publish to NPM (bin) so we can use it in our Astro project
+
+## Maybe later
+
+- LinkedIn
+- ActivityPub
+- dev.to
