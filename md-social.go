@@ -22,22 +22,24 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
-
-	"gopkg.in/yaml.v3"
+	"time"
 )
 
 type FMValue = any
 
-type Parsed struct {
-	Frontmatter    map[string]any
-	Body           string
-	HasFrontmatter bool
-	RawBlock       string // without --- markers
-}
+var baseURL string = "https://andri.dk/blog"
+
+var (
+	ErrInvalidFile = errors.New("invalid markdown file")
+	ErrSkipped     = errors.New("file skipped")
+)
+
+var publishers []Publisher
 
 func main() {
 	if err := run(); err != nil {
@@ -47,22 +49,76 @@ func main() {
 }
 
 func run() error {
+	ctx := context.Background()
+	fmt.Println("Connecting to publishers...")
+	publishers = []Publisher{NewBluesky(ctx)}
+	fmt.Println("Connected")
+
 	file := os.Args[1]
 	if _, err := os.Stat(file); errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("file not found: %s", file)
 	}
+
+	return handleFile(ctx, file)
+}
+
+// Handles a single file
+// 1. Parse it into Parsed
+// 2. Extract title
+// 3. Extract URL
+// 4. Create social post if we have credentials
+// 5. Update file with social URL if succeeded
+func handleFile(ctx context.Context, file string) error {
 	b, err := os.ReadFile(file)
 	if err != nil {
 		return err
 	}
-	parsed := parseMDContents(b)
 
-	enc := yaml.NewEncoder(os.Stdout)
-	//enc.SetIndent("", "  ")
-	if parsed.Frontmatter == nil {
-		parsed.Frontmatter = map[string]FMValue{}
+	md := Parse(b)
+	p := md.GetPost()
+
+	oneWeekAgo := time.Now().AddDate(0, 0, -7)
+
+	// Don't publish if the post is old
+	if !p.date.IsZero() && p.date.Before(oneWeekAgo) {
+		fmt.Println("Skipping old record from", p.date)
+		return nil
 	}
 
-	parsed.Frontmatter["social"] = map[string]string{"bluesky": "bleh"}
-	return enc.Encode(parsed.Frontmatter)
+	// Don't publish if there's no title or URL
+	if p.title == "" || p.url == "" {
+		return nil
+	}
+
+	if !md.HasFrontmatter {
+		return nil // Cannot publish without post data
+	}
+
+	for _, publisher := range publishers {
+		sl := md.GetSocial(publisher.PublisherID())
+		if sl != "" {
+			fmt.Println("Skipping existing record")
+			continue // Existing record
+		}
+		u, err := publisher.Publish(ctx, md)
+		if err != nil {
+			return err
+		}
+		md.SetSocial(publisher.PublisherID(), u)
+	}
+
+	//fmt.Println("pre-save", md)
+
+	if md.PendingWrite {
+		wfile, err := os.Create(file)
+		if err != nil {
+			return err
+		}
+		defer wfile.Close()
+		_, err = md.WriteTo(wfile)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
