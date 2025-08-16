@@ -15,8 +15,7 @@ type MDFile struct {
 	// Frontmatter
 	FM map[string]any
 	// Markdown body
-	Body           string
-	HasFrontmatter bool
+	Body string
 	// Frontmatter raw
 	RawFM        string // without --- markers
 	PendingWrite bool   // If we need to write it or not
@@ -26,27 +25,37 @@ type MDFile struct {
 
 var fmRe = regexp.MustCompile(`(?s)^(\s*?)---\s*\n(.*?)\n---\s*\n?`)
 
-func Parse(inputData []byte) *MDFile {
+func Parse(inputData []byte, fpath, prefix string) *MDFile {
 	// Drop BOM
 	input := string(inputData)
-	input = strings.TrimPrefix(input, "\uFEFF")
+	body := strings.TrimPrefix(input, "\uFEFF")
 	m := fmRe.FindStringSubmatchIndex(input)
-	if m == nil || m[0] != 0 {
-		return &MDFile{
-			FM:             map[string]FMValue{},
-			Body:           input,
-			HasFrontmatter: false,
-			RawFM:          "",
-		}
+
+	filename := ""
+	if relativePath, hasPrefix := strings.CutPrefix(fpath, prefix); hasPrefix {
+		filename = relativePath
+	} else {
+		filename = fpath
 	}
 
-	raw := input[m[4]:m[5]]
-	body := input[m[1]:] // full match length
-	data, err := parseFrontMatter([]byte(raw))
+	// No frontmatter, no point
+	if m == nil || m[0] != 0 {
+		return nil
+	}
+
+	rawFM := input[m[4]:m[5]]
+	body = input[m[1]:] // full match length
+	fm, err := parseFrontMatter([]byte(rawFM))
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &MDFile{FM: data, Body: body, HasFrontmatter: true, RawFM: raw}
+	return &MDFile{
+		FM:           fm,
+		Filename:     filename,
+		Body:         body,
+		RawFM:        rawFM,
+		PendingWrite: false,
+	}
 }
 
 var kvRe = regexp.MustCompile(`^([A-Za-z0-9_.-]+)\s*:\s*(.*)$`)
@@ -63,16 +72,14 @@ func parseFrontMatter(data []byte) (map[string]any, error) {
 func (mdf *MDFile) WriteTo(w io.Writer) (int64, error) {
 	var content strings.Builder
 
-	if mdf.HasFrontmatter {
-		content.WriteString("---\n")
+	content.WriteString("---\n")
 
-		yamlData, err := yaml.Marshal(mdf.FM)
-		if err != nil {
-			return 0, err
-		}
-		content.Write(yamlData)
-		content.WriteString("---\n")
+	yamlData, err := yaml.Marshal(mdf.FM)
+	if err != nil {
+		return 0, err
 	}
+	content.Write(yamlData)
+	content.WriteString("---\n")
 
 	content.WriteString(mdf.Body)
 
@@ -125,8 +132,10 @@ func (mdf *MDFile) GetPost() PostDetails {
 	slug, ok := mdf.FM["slug"].(string)
 	if ok {
 		p.url, _ = url.JoinPath(baseURL, slug)
+	} else {
+		// If no slug, use filename
+		p.url, _ = url.JoinPath(baseURL, mdf.Filename)
 	}
-	// TODO: If no slug, use filename
 
 	datestr, ok := mdf.FM["date"].(string)
 	if ok {

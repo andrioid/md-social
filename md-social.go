@@ -28,13 +28,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
 type FMValue = any
 
 var baseURL string = "https://andri.dk/blog"
+var debug = false
 
 var (
 	ErrInvalidFile = errors.New("invalid markdown file")
@@ -56,6 +56,13 @@ func run() error {
 	publishers = []Publisher{NewBluesky(ctx)}
 	fmt.Println("Connected")
 
+	if os.Getenv("DEBUG") == "1" {
+		debug = true
+	}
+	if os.Getenv("MD_BASE_URL") != "" {
+		baseURL = os.Getenv("MD_BASE_URL")
+	}
+
 	dir := os.Args[1]
 	if stat, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) || !stat.IsDir() {
 		return fmt.Errorf("directory not found: %s", dir)
@@ -65,16 +72,19 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		p, found := strings.CutPrefix(path, dir)
-		if !found {
-			p = path
-		}
 		if fi.IsDir() {
 			return nil
 		}
-		// TODO: Skip if extension isn't MD
-
-		fmt.Println("path", p)
+		// Skip if extension isn't MD
+		ext := filepath.Ext(path)
+		if ext != ".md" {
+			fmt.Println("unsupported ext", ext, path)
+			return nil
+		}
+		err = handleFile(ctx, path, dir)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
@@ -82,12 +92,6 @@ func run() error {
 	}
 
 	return nil
-
-	// if _, err := os.Stat(file); errors.Is(err, fs.ErrNotExist) {
-	// 	return fmt.Errorf("file not found: %s", file)
-	// }
-
-	// return handleFile(ctx, file)
 }
 
 // Handles a single file
@@ -96,13 +100,18 @@ func run() error {
 // 3. Extract URL
 // 4. Create social post if we have credentials
 // 5. Update file with social URL if succeeded
-func handleFile(ctx context.Context, file string) error {
+func handleFile(ctx context.Context, file string, prefix string) error {
 	b, err := os.ReadFile(file)
 	if err != nil {
 		return err
 	}
 
-	md := Parse(b)
+	md := Parse(b, file, prefix)
+	if md == nil {
+		fmt.Println("skipping, parser returned nil", file, prefix)
+		return nil
+	}
+
 	p := md.GetPost()
 
 	oneWeekAgo := time.Now().AddDate(0, 0, -7)
@@ -118,10 +127,6 @@ func handleFile(ctx context.Context, file string) error {
 		return nil
 	}
 
-	if !md.HasFrontmatter {
-		return nil // Cannot publish without post data
-	}
-
 	for _, publisher := range publishers {
 		sl := md.GetSocial(publisher.PublisherID())
 		if sl != "" {
@@ -132,6 +137,7 @@ func handleFile(ctx context.Context, file string) error {
 		if err != nil {
 			return err
 		}
+		fmt.Printf("Posted to %s: %s\n", publisher.PublisherID(), u)
 		md.SetSocial(publisher.PublisherID(), u)
 	}
 
