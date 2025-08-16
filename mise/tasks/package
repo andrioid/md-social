@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -uo pipefail
+#MISE description="Build Go binary for distribution"
+#MISE depends=["build"]
+
+BIN_DIR="dist"
+# WARN: Things will go badly if BIN_DIR is empty
+if [[ ! -d $BIN_DIR ]]; then
+   echo "Error: $BIN_DIR does not exist"
+   exit 1
+fi
+
+VERSION=v0.$(git describe --tags --always || echo dev)
+
+#rm -rf "${BIN_DIR}/*.gz" "${BIN_DIR}/*.zip"
+
+# List all files, once
+FILES=(${BIN_DIR}/*)
+
+echo FILES: "${FILES[@]}"
+
+# Iterate over all the files
+for f in "${FILES[@]}"; do
+   #if [ -f "$f" ]; continue
+   if [[ "$f" == *.zip || "$f" == *.gz ]]; then
+      continue
+   fi
+
+   if [[ "$f" == *.exe ]]; then
+      zip "${f}.zip" "$f"
+      rm $f
+   else
+      gzip -f "$f"
+   fi
+done
+
+# If GH_TOKEN is not defined, print a warning and exit 0
+if [[ -z ${GH_TOKEN+x} || -z ${GITHUB_SHA+x} ]]; then
+   echo "Warning: GH_TOKEN or GITHUB_SHA is missing. Cannot create release"
+   exit 0
+fi
+
+gh release create "$VERSION" --target "$GITHUB_SHA" --title "md-social $VERSION" --generate-notes
+gh release upload "$VERSION" dist/*.zip dist/*.gz
