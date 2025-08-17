@@ -1,0 +1,15 @@
+{
+   "name": "@andrioid/md-social",
+   "scripts": {
+      "preinstall": "node fetch-binary.js",
+      "verify": "tsc --noEmit"
+   },
+   "bin": {
+      "md-social": "bin/md-social"
+   },
+   "type": "module",
+   "devDependencies": {
+      "typescript": "^5.3.0",
+      "@types/node": "^20.0.0"
+   }
+}
