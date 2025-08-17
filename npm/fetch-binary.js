@@ -28,7 +28,7 @@ const OWNER = "andrioid";
 /** @type {string} */
 const REPO = "md-social";
 /** @type {string} */
-const VERSION = pkgJson.version || "latest";
+const VERSION = `v${pkgJson.version}` || "latest";
 
 // Try common filename variants. No predefined support list.
 /** @type {string[]} */
