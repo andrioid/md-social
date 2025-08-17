@@ -10,7 +10,7 @@ if [[ ! -d $BIN_DIR ]]; then
    exit 1
 fi
 
-VERSION=v0.$(git describe --tags --always || echo dev)
+VERSION=v0.0.1-$(git describe --tags --always || echo dev)
 
 #rm -rf "${BIN_DIR}/*.gz" "${BIN_DIR}/*.zip"
 
@@ -33,6 +33,12 @@ for f in "${FILES[@]}"; do
       gzip -f "$f"
    fi
 done
+
+(
+   cd npm || exit 1
+   npm version $VERSION --no-git-tag-version
+)
+
 
 # If GH_TOKEN is not defined, print a warning and exit 0
 if [[ -z ${GH_TOKEN+x} || -z ${GITHUB_SHA+x} ]]; then
