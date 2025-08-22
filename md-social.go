@@ -1,24 +1,3 @@
-// frontmatter-cli — tiny zero-deps CLI to read/modify Markdown frontmatter in Go
-//
-// Features:
-//  - Detect YAML frontmatter at the top of a Markdown file (--- ... ---)
-//  - Parse a small, practical subset of YAML (strings/numbers/booleans/arrays, simple block scalars)
-//  - Get/Set/Delete keys using dot paths and write changes back to the file
-//  - Initialize frontmatter if missing
-//
-// Usage:
-//   go run frontmatter-cli.go show ./post.md
-//   go run frontmatter-cli.go get ./post.md title
-//   go run frontmatter-cli.go set ./post.md title "My Post"
-//   go run frontmatter-cli.go set ./post.md tags "[go, cli]"
-//   go run frontmatter-cli.go del ./post.md draft
-//   go run frontmatter-cli.go init ./post.md
-//
-// Notes:
-//  - No third-party dependencies; minimal YAML reader/writer for common frontmatter.
-//  - Not fully YAML-spec compliant; optimized for typical blog/docs frontmatter.
-//  - Keys are written back in sorted order for stable diffs.
-
 package main
 
 import (
@@ -51,18 +30,26 @@ func main() {
 }
 
 func run() error {
-	ctx := context.Background()
-	fmt.Println("Connecting to publishers...")
-	publishers = []Publisher{NewBluesky(ctx)}
-	fmt.Println("Connected")
-
 	if os.Getenv("DEBUG") == "1" {
 		debug = true
 	}
+
+	ctx := context.Background()
+
+	// Publishers
+	fmt.Println("Connecting to publishers...")
+
+	if debug {
+		publishers = []Publisher{}
+	}
+	publishers = []Publisher{NewBluesky(ctx)}
+	fmt.Println("Connected")
+
 	if os.Getenv("MD_BASE_URL") != "" {
 		baseURL = os.Getenv("MD_BASE_URL")
 	}
 
+	// File handling
 	dir := os.Args[1]
 	if stat, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) || !stat.IsDir() {
 		return fmt.Errorf("directory not found: %s", dir)
@@ -118,12 +105,17 @@ func handleFile(ctx context.Context, file string, prefix string) error {
 
 	// Don't publish if the post is old
 	if !p.date.IsZero() && p.date.Before(oneWeekAgo) {
-		fmt.Println("Skipping old record from", p.date)
+		//fmt.Println("Skipping old record from", p.date)
 		return nil
 	}
 
 	// Don't publish if there's no title or URL
 	if p.title == "" || p.url == "" {
+		return nil
+	}
+
+	if len(publishers) == 0 {
+		fmt.Printf("Dryrun: %s\n", md.Filename)
 		return nil
 	}
 
@@ -140,8 +132,6 @@ func handleFile(ctx context.Context, file string, prefix string) error {
 		fmt.Printf("Posted to %s: %s\n", publisher.PublisherID(), u)
 		md.SetSocial(publisher.PublisherID(), u)
 	}
-
-	//fmt.Println("pre-save", md)
 
 	if md.PendingWrite {
 		wfile, err := os.Create(file)
