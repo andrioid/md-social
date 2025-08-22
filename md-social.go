@@ -34,49 +34,71 @@ func run() error {
 		debug = true
 	}
 
+	if len(os.Args) < 2 || os.Args[1] == "" {
+		return fmt.Errorf("usage: md-social <md-directory>")
+	}
+	dir := os.Args[1]
+
 	ctx := context.Background()
 
 	// Publishers
-	fmt.Println("Connecting to publishers...")
-
 	if debug {
 		publishers = []Publisher{}
+	} else {
+		fmt.Println("Connecting to publishers...")
+		publishers = []Publisher{NewBluesky(ctx)}
 	}
-	publishers = []Publisher{NewBluesky(ctx)}
-	fmt.Println("Connected")
 
 	if os.Getenv("MD_BASE_URL") != "" {
 		baseURL = os.Getenv("MD_BASE_URL")
 	}
 
 	// File handling
-	dir := os.Args[1]
 	if stat, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) || !stat.IsDir() {
 		return fmt.Errorf("directory not found: %s", dir)
 	}
+
+	files := []string{}
+	filesTotal := 0
+	filesSkipped := 0
+	filesPublished := 0
+	filesFailed := 0
 
 	err := filepath.Walk(dir, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if fi.IsDir() {
+		if fi.IsDir() || filepath.Ext(path) != ".md" {
 			return nil
 		}
-		// Skip if extension isn't MD
-		ext := filepath.Ext(path)
-		if ext != ".md" {
-			fmt.Println("unsupported ext", ext, path)
-			return nil
-		}
-		err = handleFile(ctx, path, dir)
-		if err != nil {
-			return err
-		}
+		filesTotal++
+
+		files = append(files, path)
 		return nil
 	})
 	if err != nil {
 		return err
 	}
+
+	for _, file := range files {
+		err = handleFile(ctx, file, dir)
+		if err != nil {
+			// TODO: Fault tolerance
+			if errors.Is(err, ErrSkipped) {
+				if debug {
+					fmt.Println(err)
+				}
+
+				filesSkipped++
+				continue
+			}
+			fmt.Println(err)
+			filesFailed++
+		}
+		filesPublished++
+	}
+
+	fmt.Printf("Found %d markdown files. %d published, %d skipped.\n", filesTotal, filesPublished, filesSkipped)
 
 	return nil
 }
@@ -88,6 +110,11 @@ func run() error {
 // 4. Create social post if we have credentials
 // 5. Update file with social URL if succeeded
 func handleFile(ctx context.Context, file string, prefix string) error {
+	ext := filepath.Ext(file)
+	if ext != ".md" {
+		return fmt.Errorf("%w: file extension not markdown: %s", ErrSkipped, file)
+	}
+
 	b, err := os.ReadFile(file)
 	if err != nil {
 		return err
@@ -95,8 +122,7 @@ func handleFile(ctx context.Context, file string, prefix string) error {
 
 	md := Parse(b, file, prefix)
 	if md == nil {
-		fmt.Println("skipping, parser returned nil", file, prefix)
-		return nil
+		return fmt.Errorf("%w: no frontmatter found: %s", ErrSkipped, file)
 	}
 
 	p := md.GetPost()
@@ -106,23 +132,23 @@ func handleFile(ctx context.Context, file string, prefix string) error {
 	// Don't publish if the post is old
 	if !p.date.IsZero() && p.date.Before(oneWeekAgo) {
 		//fmt.Println("Skipping old record from", p.date)
-		return nil
+		return fmt.Errorf("%w: post older than one week: %s", ErrSkipped, file)
 	}
 
 	// Don't publish if there's no title or URL
 	if p.title == "" || p.url == "" {
-		return nil
+		return fmt.Errorf("%w: no title or url in frontmatter: %s", ErrSkipped, file)
+
 	}
 
 	if len(publishers) == 0 {
-		fmt.Printf("Dryrun: %s\n", md.Filename)
-		return nil
+		return fmt.Errorf("%w: dry-run publish: %s", ErrSkipped, file)
 	}
 
 	for _, publisher := range publishers {
 		sl := md.GetSocial(publisher.PublisherID())
 		if sl != "" {
-			fmt.Println("Skipping existing record")
+			//fmt.Println("Skipping existing record")
 			continue // Existing record
 		}
 		u, err := publisher.Publish(ctx, md)
@@ -131,6 +157,9 @@ func handleFile(ctx context.Context, file string, prefix string) error {
 		}
 		fmt.Printf("Posted to %s: %s\n", publisher.PublisherID(), u)
 		md.SetSocial(publisher.PublisherID(), u)
+	}
+	if !md.PendingWrite {
+		return fmt.Errorf("%w: existing record(s): %s", ErrSkipped, file)
 	}
 
 	if md.PendingWrite {
