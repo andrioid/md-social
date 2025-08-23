@@ -1,5 +1,0 @@
-[tools]
-go = "1.24"
-watchexec = "latest"
-node = "lts"
-"ubi:cli/cli" = { version = "latest", exe = "gh" }

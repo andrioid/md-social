@@ -1,0 +1,15 @@
+[tools]
+go = "1.24"
+watchexec = "latest"
+node = "lts"
+"ubi:cli/cli" = { version = "latest", exe = "gh" }
+
+[task_config]
+includes = ["scripts"]
+
+[tasks.dev]
+run = "mise watch dev:*"
+
+[tasks."dev:go"]
+sources = ["go.mod", "**/*.go"]
+run = "go run ."

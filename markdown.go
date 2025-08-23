@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"net/url"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -133,8 +134,12 @@ func (mdf *MDFile) GetPost() PostDetails {
 	if ok {
 		p.url, _ = url.JoinPath(baseURL, slug)
 	} else {
-		// If no slug, use filename
-		p.url, _ = url.JoinPath(baseURL, mdf.Filename)
+		// If no slug, use filename, without extension
+		name := mdf.Filename
+		ext := filepath.Ext(name)
+		name = strings.TrimSuffix(name, ext)
+		p.url, _ = url.JoinPath(baseURL, name)
+
 	}
 
 	datestr, ok := mdf.FM["date"].(string)

@@ -29,13 +29,21 @@ func main() {
 	}
 }
 
+func usage() {
+	fmt.Println("usage: md-social <md-directory>")
+	fmt.Println("")
+	fmt.Println("Supported ENV variables")
+	fmt.Println("- MD_BASE_URL, BLUESKY_HANDLE*, BLUESKY_HOST, BLUESKY_APP_PASSWORD*, DEBUG")
+}
+
 func run() error {
 	if os.Getenv("DEBUG") == "1" {
 		debug = true
 	}
 
 	if len(os.Args) < 2 || os.Args[1] == "" {
-		return fmt.Errorf("usage: md-social <md-directory>")
+		usage()
+		os.Exit(0)
 	}
 	dir := os.Args[1]
 
