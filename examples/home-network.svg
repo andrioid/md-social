@@ -1,0 +1,72 @@
+<svg
+	width="1200"
+	height="630"
+	viewBox="0 0 400 209"
+	font-size="12"
+	font-family="sans-serif, Ubuntu Sans"
+	version="1.1"
+	xmlns="http://www.w3.org/2000/svg"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
+>
+	<defs>
+		<clipPath id="clip">
+			<use xlink:href="#authorImageRect" />
+		</clipPath>
+		<rect
+			id="authorImageRect"
+			width="10"
+			height="10"
+			x="40"
+			y="156"
+			fill="blue"
+			rx="50"
+		/>
+
+		<filter id="shadow" asx="0" asy="0">
+			<feGaussianBlur in="SourceAlpha" stdDeviation="3" />
+			<feOffset dx="0.5" dy="-0.5" />
+			<feMerge>
+				<feMergeNode />
+				<feMergeNode in="SourceGraphic" />
+			</feMerge>
+		</filter>
+	</defs>
+	<g>
+		<image
+			width="100%"
+			height="100%"
+			x="0"
+			y="-1"
+			xlink:href="data:image/svg&#43;xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiCiAgICB4bWxuczpzdmdqcz0iaHR0cDovL3N2Z2pzLmNvbS9zdmdqcyIgd2lkdGg9IjE0NDAiIGhlaWdodD0iNTYwIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJub25lIgogICAgdmlld0JveD0iMCAwIDE0NDAgNTYwIj4KICAgIDxnIG1hc2s9InVybCgmcXVvdDsjU3ZnanNNYXNrMTAwNiZxdW90OykiIGZpbGw9Im5vbmUiPgogICAgICAgIDxyZWN0IHdpZHRoPSIxNDQwIiBoZWlnaHQ9IjU2MCIgeD0iMCIgeT0iMCIgZmlsbD0iIzBlMmE0NyI&#43;PC9yZWN0PgogICAgICAgIDxwYXRoCiAgICAgICAgICAgIGQ9Ik0gMCwxNjcgQyA1Ny42LDE1NS44IDE3Mi44LDEwOSAyODgsMTExIEMgNDAzLjIsMTEzIDQ2MC44LDE4OS4yIDU3NiwxNzcgQyA2OTEuMiwxNjQuOCA3NDguOCw0Ni4yIDg2NCw1MCBDIDk3OS4yLDUzLjggMTAzNi44LDE5Ni40IDExNTIsMTk2IEMgMTI2Ny4yLDE5NS42IDEzODIuNCw3Ny42IDE0NDAsNDhMMTQ0MCA1NjBMMCA1NjB6IgogICAgICAgICAgICBmaWxsPSIjMTg0YTdlIj48L3BhdGg&#43;CiAgICAgICAgPHBhdGgKICAgICAgICAgICAgZD0iTSAwLDI5NyBDIDk2LDM0NC44IDI4OCw1MzIgNDgwLDUzNiBDIDY3Miw1NDAgNzY4LDMxNSA5NjAsMzE3IEMgMTE1MiwzMTkgMTM0NCw1MDAuMiAxNDQwLDU0NkwxNDQwIDU2MEwwIDU2MHoiCiAgICAgICAgICAgIGZpbGw9IiMyMjY0YWIiPjwvcGF0aD4KICAgIDwvZz4KICAgIDxkZWZzPgogICAgICAgIDxtYXNrIGlkPSJTdmdqc01hc2sxMDA2Ij4KICAgICAgICAgICAgPHJlY3Qgd2lkdGg9IjE0NDAiIGhlaWdodD0iNTYwIiBmaWxsPSIjZmZmZmZmIj48L3JlY3Q&#43;CiAgICAgICAgPC9tYXNrPgogICAgPC9kZWZzPgo8L3N2Zz4="
+			preserveAspectRatio="xMidYMid slice"
+			transform="scale(1.1,1.1)"
+		/>
+		<g filter="url(#shadow)">
+			<rect
+				width="360"
+				height="120"
+				x="20"
+				y="140"
+				rx="10"
+				style="fill: #fff; stroke-width: 0;"
+			/>
+		</g>
+		<g stroke="2" clip-path="url(#clip)">
+			<image
+				width="10"
+				height="10"
+				x="40"
+				y="156"
+				xlink:href=""
+			/>
+		</g>
+		<g class="texts" font-size="1.1em" fill="#000">
+			<text x="30" y="160" font-weight="bold">
+				Upgrading the home-network
+			</text>
+			<text x="30" y="173" fill="#5b5b5b"
+				style="font-size: 0.6em;">
+				2025-08-20
+			</text> ${tags} </g>
+	</g>
+</svg>

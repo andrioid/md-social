@@ -22,6 +22,7 @@ type MDFile struct {
 	PendingWrite bool   // If we need to write it or not
 	// Relative filename, used for URL if no slug is specified
 	Filename string
+	BaseDir  string
 }
 
 var fmRe = regexp.MustCompile(`(?s)^(\s*?)---\s*\n(.*?)\n---\s*\n?`)
@@ -53,6 +54,7 @@ func Parse(inputData []byte, fpath, prefix string) *MDFile {
 	return &MDFile{
 		FM:           fm,
 		Filename:     filename,
+		BaseDir:      prefix,
 		Body:         body,
 		RawFM:        rawFM,
 		PendingWrite: false,

@@ -14,6 +14,8 @@ type FMValue = any
 
 var baseURL string = "https://andri.dk/blog"
 var debug = false
+var ogImageBackground string = ""
+var ogImageAuthorImage string = ""
 
 var (
 	ErrInvalidFile = errors.New("invalid markdown file")
@@ -45,6 +47,10 @@ func run() error {
 		usage()
 		os.Exit(0)
 	}
+	if os.Getenv("OG_IMAGE_BG") != "" {
+		ogImageBackground = os.Getenv("OG_IMAGE_BG")
+	}
+
 	dir := os.Args[1]
 
 	ctx := context.Background()
@@ -149,11 +155,24 @@ func handleFile(ctx context.Context, file string, prefix string) error {
 
 	}
 
-	if len(publishers) == 0 {
-		return fmt.Errorf("%w: dry-run publish: %s", ErrSkipped, file)
+	// MDF Processors
+	ogi, err := NewOgImageGenerator(true)
+	if err != nil {
+		return err
+	}
+	for _, processor := range []MDFProcessor{ogi} {
+		err = processor.Process(ctx, md)
+		if err != nil {
+			return err
+		}
 	}
 
+	// Publishers
 	for _, publisher := range publishers {
+		if len(publishers) == 0 {
+			return fmt.Errorf("%w: dry-run publish: %s", ErrSkipped, file)
+		}
+
 		sl := md.GetSocial(publisher.PublisherID())
 		if sl != "" {
 			//fmt.Println("Skipping existing record")

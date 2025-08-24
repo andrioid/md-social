@@ -3,6 +3,7 @@ go = "1.24"
 watchexec = "latest"
 node = "lts"
 "ubi:cli/cli" = { version = "latest", exe = "gh" }
+"ubi:linebender/resvg" = { version = "latest", exe = "resvg" }
 
 [task_config]
 includes = ["scripts"]
@@ -11,5 +12,5 @@ includes = ["scripts"]
 run = "mise watch dev:*"
 
 [tasks."dev:go"]
-sources = ["go.mod", "**/*.go"]
-run = "go run ."
+sources = ["go.mod", "**/*.go", "og-image-template.svg"]
+run = "OG_IMAGE_BG=examples/wave.svg DEBUG=1 go run . examples"
