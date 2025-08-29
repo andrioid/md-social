@@ -1,5 +1,5 @@
 ---
-date: "2025-08-20T00:00:00.000Z"
+date: "2025-08-28T00:00:00.000Z"
 description: Or how my home probably has better network than the office.
 ogImage: examples/home-network.png
 slug: 2022/home-network

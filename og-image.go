@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"embed"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,11 +31,13 @@ type templateArguments struct {
 	AuthorHeight     int
 }
 
-//go:embed *.svg
-var templateFS embed.FS
-
 func NewOgImageGenerator(overwrite bool) (*ogImageGenerator, error) {
 	disabled := false
+	assetFS, err := fs.Sub(embedFS, "assets")
+	if err != nil {
+		return nil, err
+	}
+
 	if _, err := exec.LookPath("resvg"); err != nil {
 		fmt.Println("warning: resvg was not found, skipping og-images")
 		disabled = true
@@ -45,7 +47,7 @@ func NewOgImageGenerator(overwrite bool) (*ogImageGenerator, error) {
 		disabled = true
 	}
 	//Compile template
-	tmpl, err := template.ParseFS(templateFS, "og-image-template.svg")
+	tmpl, err := template.ParseFS(assetFS, "og-image-template.svg")
 	if err != nil {
 		return nil, err
 	}
