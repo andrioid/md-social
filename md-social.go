@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/urfave/cli/v3"
 )
 
 type FMValue = any
@@ -25,6 +27,55 @@ var (
 var publishers []Publisher
 
 func main() {
+	cmd := &cli.Command{
+		Usage: "Parse markdown articles, do stuff with them",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:     "base-url",
+				Usage:    "Used to create links back to the article",
+				Required: true,
+				Sources:  cli.EnvVars("BASE_URL"),
+			},
+
+			&cli.BoolFlag{
+				Name:    "og-image",
+				Value:   false,
+				Usage:   "create og-image for markdown files",
+				Sources: cli.EnvVars("OG_IMAGE"),
+			},
+			&cli.StringFlag{
+				Name:    "og-image-bg",
+				Usage:   "image file to use as background",
+				Value:   "",
+				Sources: cli.EnvVars("OG_IMAGE_BG"),
+			},
+			&cli.StringFlag{
+				Name:    "og-image-author",
+				Usage:   "image file to use as author image",
+				Value:   "",
+				Sources: cli.EnvVars("OG_IMAGE_AUTHOR"),
+			},
+			&cli.BoolFlag{
+				Name:    "dryrun",
+				Value:   false,
+				Usage:   "Dry run. Doesn't post, or write to disk",
+				Sources: cli.EnvVars("DRY_RUN"),
+			},
+			&cli.StringFlag{
+				Name:    "bluesky-handle",
+				Usage:   "Bluesky handle to use when posting. If not set, Bluesky integration is disabled.",
+				Sources: cli.EnvVars("BLUESKY_HANDLE"),
+			},
+			&cli.StringFlag{
+				Name:    "bluesky-app-pw",
+				Usage:   "Bluesky app password to use when posting",
+				Sources: cli.EnvVars("BLUESKY_APP_PASSWORD"),
+			},
+		},
+	}
+	cmd.Run(context.Background(), os.Args)
+	os.Exit(0)
+
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
