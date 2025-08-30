@@ -14,11 +14,6 @@ import (
 
 type FMValue = any
 
-var baseURL string = "https://andri.dk/blog"
-var debug = false
-var ogImageBackground string = ""
-var ogImageAuthorImage string = ""
-
 var (
 	ErrInvalidFile = errors.New("invalid markdown file")
 	ErrSkipped     = errors.New("file skipped")
@@ -29,6 +24,45 @@ var publishers []Publisher
 func main() {
 	cmd := &cli.Command{
 		Usage: "Parse markdown articles, do stuff with them",
+		Commands: []*cli.Command{
+			{
+				Name:      "parse",
+				Usage:     "Parses a directory for frontmatter markdown files.",
+				ArgsUsage: "parse blogposts/",
+				Arguments: []cli.Argument{
+					&cli.StringArg{
+						Name: "dir",
+					},
+				},
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:    "og-image",
+						Value:   false,
+						Usage:   "create og-image for markdown files",
+						Sources: cli.EnvVars("OG_IMAGE"),
+					},
+					&cli.StringFlag{
+						Name:    "og-image-bg",
+						Usage:   "image file to use as background",
+						Value:   "",
+						Sources: cli.EnvVars("OG_IMAGE_BG"),
+					},
+					&cli.StringFlag{
+						Name:    "og-image-author",
+						Usage:   "image file to use as author image",
+						Value:   "",
+						Sources: cli.EnvVars("OG_IMAGE_AUTHOR"),
+					},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return parse(ctx, cmd)
+				},
+			},
+			{
+				Name:  "server",
+				Usage: "Server to help with services that require OAUTH",
+			},
+		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "base-url",
@@ -37,24 +71,6 @@ func main() {
 				Sources:  cli.EnvVars("BASE_URL"),
 			},
 
-			&cli.BoolFlag{
-				Name:    "og-image",
-				Value:   false,
-				Usage:   "create og-image for markdown files",
-				Sources: cli.EnvVars("OG_IMAGE"),
-			},
-			&cli.StringFlag{
-				Name:    "og-image-bg",
-				Usage:   "image file to use as background",
-				Value:   "",
-				Sources: cli.EnvVars("OG_IMAGE_BG"),
-			},
-			&cli.StringFlag{
-				Name:    "og-image-author",
-				Usage:   "image file to use as author image",
-				Value:   "",
-				Sources: cli.EnvVars("OG_IMAGE_AUTHOR"),
-			},
 			&cli.BoolFlag{
 				Name:    "dryrun",
 				Value:   false,
@@ -74,48 +90,18 @@ func main() {
 		},
 	}
 	cmd.Run(context.Background(), os.Args)
-	os.Exit(0)
-
-	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
 }
 
-func usage() {
-	fmt.Println("usage: md-social <md-directory>")
-	fmt.Println("")
-	fmt.Println("Supported ENV variables")
-	fmt.Println("- MD_BASE_URL, BLUESKY_HANDLE*, BLUESKY_HOST, BLUESKY_APP_PASSWORD*, DEBUG")
-}
+func parse(ctx context.Context, cmd *cli.Command) error {
+	dir := cmd.Args().First()
+	bskyHandle := cmd.String("bluesky-handle")
+	bskyAppPW := cmd.String("bluesky-app-pw")
+	baseURL := cmd.String("base-url")
 
-func run() error {
-	if os.Getenv("DEBUG") == "1" {
-		debug = true
-	}
-
-	if len(os.Args) < 2 || os.Args[1] == "" {
-		usage()
-		os.Exit(0)
-	}
-	if os.Getenv("OG_IMAGE_BG") != "" {
-		ogImageBackground = os.Getenv("OG_IMAGE_BG")
-	}
-
-	dir := os.Args[1]
-
-	ctx := context.Background()
-
+	publishers = []Publisher{}
 	// Publishers
-	if debug {
-		publishers = []Publisher{}
-	} else {
-		fmt.Println("Connecting to publishers...")
+	if bskyHandle != "" {
 		publishers = []Publisher{NewBluesky(ctx)}
-	}
-
-	if os.Getenv("MD_BASE_URL") != "" {
-		baseURL = os.Getenv("MD_BASE_URL")
 	}
 
 	// File handling

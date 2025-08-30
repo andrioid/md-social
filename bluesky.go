@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/bluesky-social/indigo/api/atproto"
@@ -21,12 +20,18 @@ type BlueskyPublisher struct {
 	ctx         context.Context
 }
 
+type BlueskyConfig struct {
+	handle      string
+	appPassword string
+	host        string
+}
+
 // Creates a publisher, or exits if it fals
-func NewBluesky(ctx context.Context) *BlueskyPublisher {
+func NewBluesky(ctx context.Context, config BlueskyConfig) *BlueskyPublisher {
 	bsk := &BlueskyPublisher{
-		Handle:      os.Getenv("BLUESKY_HANDLE"),
-		AppPassword: os.Getenv("BLUESKY_APP_PASSWORD"),
-		Host:        os.Getenv("BLUESKY_HOST"),
+		Handle:      config.handle,
+		AppPassword: config.appPassword,
+		Host:        config.host,
 		ctx:         ctx,
 	}
 	if bsk.Handle == "" {

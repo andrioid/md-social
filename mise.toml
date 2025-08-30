@@ -13,4 +13,4 @@ run = "mise watch dev:*"
 
 [tasks."dev:go"]
 sources = ["go.mod", "**/*.go", "og-image-template.svg"]
-run = "OG_IMAGE_BG=examples/wave.svg DEBUG=1 go run . examples"
+run = "OG_IMAGE_BG=examples/wave.svg DRYRUN=1 go run . parse examples"
