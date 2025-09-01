@@ -52,3 +52,8 @@ As a CLI user, I can...
 - LinkedIn
 - ActivityPub
 - dev.to
+
+## v2 usage?
+
+- md-social parse --og-image --og-image-background moo.png --og-image-author cow.png examples/
+- md social server # for oauth proxy stuff

@@ -2,15 +2,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/bluesky-social/indigo/api/atproto"
 	appbsky "github.com/bluesky-social/indigo/api/bsky"
 	lexutil "github.com/bluesky-social/indigo/lex/util"
 	"github.com/bluesky-social/indigo/xrpc"
+	"github.com/urfave/cli/v3"
 )
 
 type BlueskyPublisher struct {
@@ -22,18 +23,19 @@ type BlueskyPublisher struct {
 }
 
 // Creates a publisher, or exits if it fals
-func NewBluesky(ctx context.Context) *BlueskyPublisher {
+func NewBluesky(ctx context.Context, cmd *cli.Command) (*BlueskyPublisher, error) {
+
 	bsk := &BlueskyPublisher{
-		Handle:      os.Getenv("BLUESKY_HANDLE"),
-		AppPassword: os.Getenv("BLUESKY_APP_PASSWORD"),
-		Host:        os.Getenv("BLUESKY_HOST"),
+		Handle:      cmd.String("bluesky-handle"),
+		AppPassword: cmd.String("bluesky-app-pw"),
+		Host:        cmd.String("bluesky-host"),
 		ctx:         ctx,
 	}
 	if bsk.Handle == "" {
-		log.Fatal("BLUESKY_HANDLE required")
+		return nil, fmt.Errorf("%w: no bluesky handle defined, skipping", ErrModuleSkipped)
 	}
 	if bsk.AppPassword == "" {
-		log.Fatal("BLUESKY_APP_PASSWORD required")
+		return nil, fmt.Errorf("bluesky app password required")
 	}
 	if bsk.Host == "" {
 		bsk.Host = "https://bsky.social"
@@ -58,17 +60,22 @@ func NewBluesky(ctx context.Context) *BlueskyPublisher {
 		Did:        session.Did,
 	}
 
-	return bsk
+	return bsk, nil
 }
 
 func (bsk *BlueskyPublisher) PublisherID() string {
 	return "bluesky"
 }
 
-func (bsk *BlueskyPublisher) Publish(ctx context.Context, md *MDFile) (string, error) {
-	p := md.GetPost()
-	title := p.title
-	mdURL := p.url
+func (bsk *BlueskyPublisher) Publish(ctx context.Context, md *MDFile) error {
+	if dryRun {
+		fmt.Println("[bluesky.publish] dry-run", md.Filename)
+		return nil
+	} else {
+		fmt.Println("[bluesky.publish] posting", md.Filename)
+	}
+	title := md.Title()
+	mdURL := md.URL()
 
 	post := appbsky.FeedPost{
 		Text:          title,
@@ -92,7 +99,8 @@ func (bsk *BlueskyPublisher) Publish(ctx context.Context, md *MDFile) (string, e
 
 	res, err := atproto.RepoCreateRecord(bsk.ctx, bsk.Client, postInput)
 	if err != nil {
-		return "", err
+		return err
 	}
-	return res.Uri, nil
+	md.SetSocial(bsk.PublisherID(), res.Uri)
+	return nil
 }
