@@ -1,10 +1,10 @@
 ---
 date: "2025-08-28T00:00:00.000Z"
 description: Or how my home probably has better network than the office.
-ogImage: examples/home-network.png
+ogImage: examples/static/og-cards/home-network.png
 slug: 2022/home-network
 social:
-    bluesky: at://did:plc:2uszitvsky5qnygpolsfr5ey/app.bsky.feed.post/3lwyi4jt3zr2z
+    bluesky: at://did:plc:2uszitvsky5qnygpolsfr5ey/app.bsky.feed.post/3lxqx7nx4zs2h
 tags:
     - blog
     - networking

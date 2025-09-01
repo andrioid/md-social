@@ -4,10 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
-	"path/filepath"
-	"time"
 
 	"github.com/urfave/cli/v3"
 )
@@ -15,11 +12,16 @@ import (
 type FMValue = any
 
 var (
-	ErrInvalidFile = errors.New("invalid markdown file")
-	ErrSkipped     = errors.New("file skipped")
+	ErrInvalidFile   = errors.New("invalid markdown file")
+	ErrFileSkipped   = errors.New("file skipped")
+	ErrModuleSkipped = errors.New("module skipped")
 )
 
-var publishers []Publisher
+// Write more debug info
+var verbose = false
+
+// Don't persist any file changes, or post anything online
+var dryRun = false
 
 func main() {
 	cmd := &cli.Command{
@@ -28,7 +30,7 @@ func main() {
 			{
 				Name:      "parse",
 				Usage:     "Parses a directory for frontmatter markdown files.",
-				ArgsUsage: "parse blogposts/",
+				ArgsUsage: "blogposts/",
 				Arguments: []cli.Argument{
 					&cli.StringArg{
 						Name: "dir",
@@ -53,6 +55,17 @@ func main() {
 						Value:   "",
 						Sources: cli.EnvVars("OG_IMAGE_AUTHOR"),
 					},
+					&cli.BoolFlag{
+						Name:    "og-image-overwrite",
+						Usage:   "Overwrite existing og-images",
+						Value:   true,
+						Sources: cli.EnvVars("OG_OVERWRITE"),
+					},
+					&cli.StringFlag{
+						Name:    "og-dest-dir",
+						Usage:   "destination directory for og-images. If empty, it will write to same directory as input",
+						Sources: cli.EnvVars("OG_DEST_DIR"),
+					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					return parse(ctx, cmd)
@@ -75,7 +88,13 @@ func main() {
 				Name:    "dryrun",
 				Value:   false,
 				Usage:   "Dry run. Doesn't post, or write to disk",
-				Sources: cli.EnvVars("DRY_RUN"),
+				Sources: cli.EnvVars("DRYRUN"),
+			},
+			&cli.BoolFlag{
+				Name:    "verbose",
+				Value:   false,
+				Usage:   "More verbose output for debugging purposes.",
+				Sources: cli.EnvVars("VERBOSE"),
 			},
 			&cli.StringFlag{
 				Name:    "bluesky-handle",
@@ -87,155 +106,15 @@ func main() {
 				Usage:   "Bluesky app password to use when posting",
 				Sources: cli.EnvVars("BLUESKY_APP_PASSWORD"),
 			},
+			&cli.IntFlag{
+				Name:    "publish-max-days",
+				Usage:   "Don't publish anything older than this",
+				Sources: cli.EnvVars("PUBLISH_MAX_DAYS"),
+			},
 		},
 	}
-	cmd.Run(context.Background(), os.Args)
-}
-
-func parse(ctx context.Context, cmd *cli.Command) error {
-	dir := cmd.Args().First()
-	bskyHandle := cmd.String("bluesky-handle")
-	bskyAppPW := cmd.String("bluesky-app-pw")
-	baseURL := cmd.String("base-url")
-
-	publishers = []Publisher{}
-	// Publishers
-	if bskyHandle != "" {
-		publishers = []Publisher{NewBluesky(ctx)}
+	if err := cmd.Run(context.Background(), os.Args); err != nil {
+		fmt.Println("[application error]", err)
+		os.Exit(1)
 	}
-
-	// File handling
-	if stat, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) || !stat.IsDir() {
-		return fmt.Errorf("directory not found: %s", dir)
-	}
-
-	files := []string{}
-	filesTotal := 0
-	filesSkipped := 0
-	filesPublished := 0
-	filesFailed := 0
-
-	err := filepath.Walk(dir, func(path string, fi os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if fi.IsDir() || filepath.Ext(path) != ".md" {
-			return nil
-		}
-		filesTotal++
-
-		files = append(files, path)
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	for _, file := range files {
-		err = handleFile(ctx, file, dir)
-		if err != nil {
-			// TODO: Fault tolerance
-			if errors.Is(err, ErrSkipped) {
-				if debug {
-					fmt.Println(err)
-				}
-
-				filesSkipped++
-				continue
-			}
-			fmt.Println(err)
-			filesFailed++
-		}
-		filesPublished++
-	}
-
-	fmt.Printf("Found %d markdown files. %d published, %d skipped.\n", filesTotal, filesPublished, filesSkipped)
-
-	return nil
-}
-
-// Handles a single file
-// 1. Parse it into Parsed
-// 2. Extract title
-// 3. Extract URL
-// 4. Create social post if we have credentials
-// 5. Update file with social URL if succeeded
-func handleFile(ctx context.Context, file string, prefix string) error {
-	ext := filepath.Ext(file)
-	if ext != ".md" {
-		return fmt.Errorf("%w: file extension not markdown: %s", ErrSkipped, file)
-	}
-
-	b, err := os.ReadFile(file)
-	if err != nil {
-		return err
-	}
-
-	md := Parse(b, file, prefix)
-	if md == nil {
-		return fmt.Errorf("%w: no frontmatter found: %s", ErrSkipped, file)
-	}
-
-	p := md.GetPost()
-
-	oneWeekAgo := time.Now().AddDate(0, 0, -7)
-
-	// Don't publish if the post is old
-	if !p.date.IsZero() && p.date.Before(oneWeekAgo) {
-		//fmt.Println("Skipping old record from", p.date)
-		return fmt.Errorf("%w: post older than one week: %s", ErrSkipped, file)
-	}
-
-	// Don't publish if there's no title or URL
-	if p.title == "" || p.url == "" {
-		return fmt.Errorf("%w: no title or url in frontmatter: %s", ErrSkipped, file)
-
-	}
-
-	// MDF Processors
-	ogi, err := NewOgImageGenerator(true)
-	if err != nil {
-		return err
-	}
-	for _, processor := range []MDFProcessor{ogi} {
-		err = processor.Process(ctx, md)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Publishers
-	for _, publisher := range publishers {
-		if len(publishers) == 0 {
-			return fmt.Errorf("%w: dry-run publish: %s", ErrSkipped, file)
-		}
-
-		sl := md.GetSocial(publisher.PublisherID())
-		if sl != "" {
-			//fmt.Println("Skipping existing record")
-			continue // Existing record
-		}
-		u, err := publisher.Publish(ctx, md)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("Posted to %s: %s\n", publisher.PublisherID(), u)
-		md.SetSocial(publisher.PublisherID(), u)
-	}
-	if !md.PendingWrite {
-		return fmt.Errorf("%w: existing record(s): %s", ErrSkipped, file)
-	}
-
-	if md.PendingWrite {
-		wfile, err := os.Create(file)
-		if err != nil {
-			return err
-		}
-		defer wfile.Close()
-		_, err = md.WriteTo(wfile)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }

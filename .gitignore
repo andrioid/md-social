@@ -1,3 +1,5 @@
 dist/
 npm/bin/
 npm/node_modules/
+./md-social
+.env

@@ -1,3 +1,6 @@
+[env]
+_.file = '.env'
+
 [tools]
 go = "1.24"
 watchexec = "latest"
@@ -11,6 +14,13 @@ includes = ["scripts"]
 [tasks.dev]
 run = "mise watch dev:*"
 
+
 [tasks."dev:go"]
-sources = ["go.mod", "**/*.go", "og-image-template.svg"]
-run = "OG_IMAGE_BG=examples/wave.svg DRYRUN=1 go run . parse examples"
+sources = [
+    "go.mod",
+    "**/*.go",
+    "og-image-template.svg",
+    "examples/*.md",
+    ".env",
+]
+run = "go build -o bin/md-social . && ./bin/md-social parse examples"

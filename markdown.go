@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -23,26 +25,28 @@ type MDFile struct {
 	// Relative filename, used for URL if no slug is specified
 	Filename string
 	BaseDir  string
+	BaseURL  string
 }
 
 var fmRe = regexp.MustCompile(`(?s)^(\s*?)---\s*\n(.*?)\n---\s*\n?`)
 
-func Parse(inputData []byte, fpath, prefix string) *MDFile {
+func ParseMarkdownFile(file, prefix, baseURL string) (*MDFile, error) {
+	inputData, err := os.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
 	// Drop BOM
 	input := string(inputData)
 	body := strings.TrimPrefix(input, "\uFEFF")
 	m := fmRe.FindStringSubmatchIndex(input)
 
-	filename := ""
-	if relativePath, hasPrefix := strings.CutPrefix(fpath, prefix); hasPrefix {
-		filename = relativePath
-	} else {
-		filename = fpath
+	if relativePath, hasPrefix := strings.CutPrefix(file, prefix); hasPrefix {
+		file = relativePath
 	}
 
 	// No frontmatter, no point
 	if m == nil || m[0] != 0 {
-		return nil
+		return nil, fmt.Errorf("%w: no frontmatter", ErrFileSkipped)
 	}
 
 	rawFM := input[m[4]:m[5]]
@@ -51,17 +55,25 @@ func Parse(inputData []byte, fpath, prefix string) *MDFile {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &MDFile{
+
+	mdf := &MDFile{
 		FM:           fm,
-		Filename:     filename,
+		Filename:     file,
 		BaseDir:      prefix,
 		Body:         body,
 		RawFM:        rawFM,
 		PendingWrite: false,
+		BaseURL:      baseURL,
 	}
-}
 
-var kvRe = regexp.MustCompile(`^([A-Za-z0-9_.-]+)\s*:\s*(.*)$`)
+	if mdf.Title() == "" || mdf.URL() == "" {
+		return nil, fmt.Errorf("%w: no title or url in frontmatter: %s", ErrFileSkipped, file)
+	}
+	if mdf.Date().IsZero() {
+		return nil, fmt.Errorf("%w: date not found or empty: %s", ErrFileSkipped, file)
+	}
+	return mdf, nil
+}
 
 func parseFrontMatter(data []byte) (map[string]any, error) {
 	d := map[string]any{}
@@ -118,39 +130,51 @@ func (mdf *MDFile) GetSocial(key string) string {
 	return val
 }
 
-type PostDetails struct {
-	title string
-	url   string
-	date  time.Time
-}
-
-func (mdf *MDFile) GetPost() PostDetails {
-	p := PostDetails{}
-
-	title, ok := mdf.FM["title"].(string)
-	if ok {
-		p.title = title
-	}
-
+func (mdf *MDFile) URL() string {
 	slug, ok := mdf.FM["slug"].(string)
 	if ok {
-		p.url, _ = url.JoinPath(baseURL, slug)
-	} else {
-		// If no slug, use filename, without extension
-		name := mdf.Filename
-		ext := filepath.Ext(name)
-		name = strings.TrimSuffix(name, ext)
-		p.url, _ = url.JoinPath(baseURL, name)
-
+		purl, _ := url.JoinPath(mdf.BaseURL, slug)
+		return purl
 	}
+	// If no slug, use filename, without extension
+	name := mdf.Filename
+	ext := filepath.Ext(name)
+	name = strings.TrimSuffix(name, ext)
+	purl, _ := url.JoinPath(mdf.BaseURL, name)
+	return purl
+}
 
+func (mdf *MDFile) Date() time.Time {
 	datestr, ok := mdf.FM["date"].(string)
 	if ok {
 		d, err := time.Parse(time.RFC3339, datestr)
 		if err == nil {
-			p.date = d
+			return d
 		}
 	}
+	return time.Time{}
+}
 
-	return p
+func (mdf *MDFile) Title() string {
+	title, ok := mdf.FM["title"].(string)
+	if ok {
+		return title
+	}
+	return ""
+
+}
+
+func (mdf *MDFile) CoverImage() string {
+	if val, ok := mdf.FM["coverImage"].(string); ok {
+		return val
+	}
+	return ""
+}
+
+func (mdf *MDFile) Tags() []string {
+	if val, ok := mdf.FM["coverImage"].([]string); ok {
+		return val
+	}
+	return []string{}
+
 }
