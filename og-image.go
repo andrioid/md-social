@@ -99,8 +99,8 @@ func (ogi *ogImageGenerator) Process(ctx context.Context, mdf *MDFile) error {
 	if !found {
 		return fmt.Errorf("md file didnt have extension")
 	}
+	basename = strings.TrimPrefix(basename, "/")
 
-	svgFn := filepath.Join(ogi.destDir, basename) + ".svg"
 	pngFn := filepath.Join(ogi.destDir, basename) + ".png"
 
 	// Create destination directory, if it doesn't exist
@@ -113,15 +113,16 @@ func (ogi *ogImageGenerator) Process(ctx context.Context, mdf *MDFile) error {
 	}
 
 	//fmt.Println("basename", svgFn)
-	svgFile, err := os.Create(svgFn)
+	svgFile, err := os.CreateTemp(os.TempDir(), "og-image")
 	if err != nil {
 		return err
 	}
 	defer svgFile.Close()
+	defer os.Remove(svgFile.Name())
 
 	templateArgs := ogi.args
 	templateArgs.Title = mdf.Title()
-	templateArgs.SubTitle = mdf.Date().Format("2006-01-02")
+	templateArgs.SubTitle = mdf.Description()
 	if mdf.CoverImage() != "" {
 		bgp := filepath.Join(mdf.BaseDir, filepath.Dir(mdf.Filename), mdf.CoverImage())
 		b64, err := FileToDataURL(bgp)
@@ -139,12 +140,13 @@ func (ogi *ogImageGenerator) Process(ctx context.Context, mdf *MDFile) error {
 	}
 
 	// Convert to png
-	cmd := exec.Command("resvg", svgFn, pngFn)
+	cmd := exec.Command("resvg", "--font-family", "sans-serif", svgFile.Name(), pngFn)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to convert svg to png with resvg: %w", err)
 	}
 
-	mdf.FM["ogImage"] = pngFn
+	ogUrl := basename + ".png"
+	mdf.FM["ogImage"] = ogUrl
 	mdf.PendingWrite = true
 
 	return nil

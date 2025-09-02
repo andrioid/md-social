@@ -1,7 +1,7 @@
 ---
 date: "2022-07-03T00:00:00.000Z"
 description: Or how my home probably has better network than the office.
-ogImage: examples/static/og-cards/nested/home-network.png
+ogImage: nested/home-network.png
 slug: 2022/home-network
 social:
     bluesky: at://did:plc:2uszitvsky5qnygpolsfr5ey/app.bsky.feed.post/3lxqx7oc7uk2k

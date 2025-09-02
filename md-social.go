@@ -66,6 +66,11 @@ func main() {
 						Usage:   "destination directory for og-images. If empty, it will write to same directory as input",
 						Sources: cli.EnvVars("OG_DEST_DIR"),
 					},
+					&cli.StringFlag{
+						Name:    "og-base-url",
+						Usage:   "base url for ogImage in markdown file. If empty, it will use the relative path of markdown file",
+						Sources: cli.EnvVars("OG_BASE_URL"),
+					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					return parse(ctx, cmd)

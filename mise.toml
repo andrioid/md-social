@@ -16,11 +16,5 @@ run = "mise watch dev:*"
 
 
 [tasks."dev:go"]
-sources = [
-    "go.mod",
-    "**/*.go",
-    "og-image-template.svg",
-    "examples/*.md",
-    ".env",
-]
+sources = ["go.mod", "**/*.go", "og-image-template.svg", ".env"]
 run = "go build -o bin/md-social . && ./bin/md-social parse examples"

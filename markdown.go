@@ -172,9 +172,16 @@ func (mdf *MDFile) CoverImage() string {
 }
 
 func (mdf *MDFile) Tags() []string {
-	if val, ok := mdf.FM["coverImage"].([]string); ok {
+	if val, ok := mdf.FM["tags"].([]string); ok {
 		return val
 	}
 	return []string{}
 
+}
+
+func (mdf *MDFile) Description() string {
+	if val, ok := mdf.FM["description"].(string); ok {
+		return val
+	}
+	return ""
 }

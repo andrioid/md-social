@@ -43,9 +43,11 @@ As a CLI user, I can...
 - [x] Handle single file
 - [x] Determine if we should create a post from `date` frontmatter field
 - [x] Handle directory and strip the prefix
-- [ ] Setup mise tasks
-- [ ] Build a binary via CI
-- [ ] Build and publish to NPM (bin) so we can use it in our Astro project
+- [x] Setup mise tasks
+- [x] Build a binary via CI
+- [x] Build and publish to NPM (bin) so we can use it in our Astro project
+- [ ] Verbose should list available fonts for resvg
+- [ ] Allow custom fonts via flags
 
 ## Maybe later
 
