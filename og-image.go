@@ -39,7 +39,7 @@ type templateArguments struct {
 func NewOgImageGenerator(cmd *cli.Command) (*ogImageGenerator, error) {
 	bgImagePath := cmd.String("og-image-bg")
 	bgImage := ""
-	authorImagePath := cmd.String("og-author-bg")
+	authorImagePath := cmd.String("og-image-author")
 	authorImage := ""
 
 	assetFS, err := fs.Sub(embedFS, "assets")
@@ -102,6 +102,7 @@ func (ogi *ogImageGenerator) Process(ctx context.Context, mdf *MDFile) error {
 	basename = strings.TrimPrefix(basename, "/")
 
 	pngFn := filepath.Join(ogi.destDir, basename) + ".png"
+	svgFn := filepath.Join(ogi.destDir, basename) + ".svg"
 
 	// Create destination directory, if it doesn't exist
 	dstDir := filepath.Dir(pngFn)
@@ -113,12 +114,14 @@ func (ogi *ogImageGenerator) Process(ctx context.Context, mdf *MDFile) error {
 	}
 
 	//fmt.Println("basename", svgFn)
-	svgFile, err := os.CreateTemp(os.TempDir(), "og-image")
+	svgFile, err := os.Create(svgFn)
 	if err != nil {
 		return err
 	}
 	defer svgFile.Close()
-	defer os.Remove(svgFile.Name())
+	if !ogi.cmd.Bool("og-keep-svg") {
+		defer os.Remove(svgFile.Name())
+	}
 
 	templateArgs := ogi.args
 	templateArgs.Title = mdf.Title()

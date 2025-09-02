@@ -14,10 +14,10 @@
 		</clipPath>
 		<rect
 			id="authorImageRect"
-			width="10"
-			height="10"
-			x="40"
-			y="156"
+			width="40"
+			height="40"
+			x="340"
+			y="30"
 			fill="blue"
 			rx="50"
 		/>
@@ -53,10 +53,10 @@
 		</g>
 		<g stroke="2" clip-path="url(#clip)">
 			<image
-				width="10"
-				height="10"
-				x="40"
-				y="156"
+				width="40"
+				height="40"
+				x="340"
+				y="30"
 				xlink:href="{{ .AuthorImage }}"
 			/>
 		</g>
