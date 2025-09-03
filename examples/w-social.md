@@ -5,7 +5,7 @@ description: Or how my home probably has better network than the office.
 ogImage: w-social.png
 slug: 2022/home-network
 social:
-    bluesky: at://did:plc:2uszitvsky5qnygpolsfr5ey/app.bsky.feed.post/3lxrcuvfxlp2w
+    bluesky: at://did:plc:2uszitvsky5qnygpolsfr5ey/app.bsky.feed.post/3lxvxfiyc7c2w
 tags:
     - blog
     - networking

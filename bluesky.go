@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/bluesky-social/indigo/api/atproto"
@@ -20,6 +22,7 @@ type BlueskyPublisher struct {
 	Host        string
 	Client      *xrpc.Client
 	ctx         context.Context
+	cmd         *cli.Command
 }
 
 // Creates a publisher, or exits if it fals
@@ -30,6 +33,7 @@ func NewBluesky(ctx context.Context, cmd *cli.Command) (*BlueskyPublisher, error
 		AppPassword: cmd.String("bluesky-app-pw"),
 		Host:        cmd.String("bluesky-host"),
 		ctx:         ctx,
+		cmd:         cmd,
 	}
 	if bsk.Handle == "" {
 		return nil, fmt.Errorf("%w: no bluesky handle defined, skipping", ErrModuleSkipped)
@@ -76,6 +80,29 @@ func (bsk *BlueskyPublisher) Publish(ctx context.Context, md *MDFile) error {
 	}
 	title := md.Title()
 	mdURL := md.URL()
+	ogImage := md.String("ogImage")
+	var embedBlob atproto.RepoUploadBlob_Output
+	if ogImage != "" {
+		ogDir := bsk.cmd.String("og-dest-dir")
+		if ogDir == "" {
+			ogDir := bsk.cmd.StringArg("dir")
+			if ogDir == "" {
+				return fmt.Errorf("og-image defined, but cant detect directory")
+			}
+		}
+		ogf, err := os.Open(filepath.Join(ogDir, ogImage))
+		if err != nil {
+			return err
+		}
+		// TODO: Make bluesky send the thumbnail too
+		// -https://github.com/bluesky-social/indigo/blob/214d5c43bbb8268d5981823201bef887e9b25bb3/cmd/goat/blob.go#L231
+		res, err := atproto.RepoUploadBlob(ctx, bsk.Client, ogf)
+		if err != nil {
+			return err
+		}
+		embedBlob = *res
+
+	}
 
 	post := appbsky.FeedPost{
 		Text:          title,
@@ -85,8 +112,10 @@ func (bsk *BlueskyPublisher) Publish(ctx context.Context, md *MDFile) error {
 			EmbedExternal: &appbsky.EmbedExternal{
 				LexiconTypeID: "app.bsky.embed.external",
 				External: &appbsky.EmbedExternal_External{
-					Title: title,
-					Uri:   mdURL,
+					Title:       title,
+					Uri:         mdURL,
+					Description: md.Description(),
+					Thumb:       embedBlob.Blob,
 				},
 			},
 		},

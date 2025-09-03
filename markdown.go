@@ -185,3 +185,10 @@ func (mdf *MDFile) Description() string {
 	}
 	return ""
 }
+
+func (mdf *MDFile) String(key string) string {
+	if val, ok := mdf.FM[key].(string); ok {
+		return val
+	}
+	return ""
+}
